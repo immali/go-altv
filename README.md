@@ -14,14 +14,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/immali/go-altv"
+	goaltv "github.com/immali/go-altv"
 )
 
 func main() {
-	r := gocapi.NewResource()
-	r.OnPlayerConnect(func(p *gocapi.Player) {
+	r := goaltv.NewResource()
+	r.OnPlayerConnect(func(p *goaltv.Player) {
 		fmt.Println(fmt.Sprintf("Player (%s) with ID %d has connected", p.Name, p.ID))
-		p.Spawn(gocapi.Vector3{
+		p.Spawn(goaltv.Vector3{
 			X: -425.517,
 			Y: 1123.620,
 			Z: 325.8544,
@@ -31,5 +31,4 @@ func main() {
 	ch := make(chan int)
 	<-ch
 }
-
 ```
