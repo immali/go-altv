@@ -1,8 +1,6 @@
 package alt
 
-import (
-	"unsafe"
-)
+import "C"
 
 type Player struct {
 	ptr uintptr
@@ -24,9 +22,11 @@ func (p *Player) GetName() string {
 
 func (p *Player) Spawn(X, Y, Z float64, delay int) {
 	vec3 := NewVector3(p.lib, X, Y, Z)
-	delayPtr := (uintptr)(unsafe.Pointer(&delay))
+	dl := C.uint(0)
+	// delayPtr := (uintptr)(unsafe.Pointer(dl))
+	delayPtr := C.uintptr_t(dl)
 
-	p.lib.playerSpawn.Call(p.ptr, vec3.ptr, delayPtr)
+	p.lib.playerSpawn.Call(p.ptr, vec3.ptr, (uintptr)(delayPtr))
 }
 
 func (p *Player) SetModel(model uint) {

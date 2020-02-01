@@ -1,10 +1,7 @@
 package alt
 
+// #include "c/vector3.c"
 import "C"
-import (
-	"fmt"
-	"unsafe"
-)
 
 type Vector3 struct {
 	lib *AltLib
@@ -12,21 +9,12 @@ type Vector3 struct {
 }
 
 func NewVector3(lib *AltLib, X, Y, Z float64) *Vector3 {
-	x := (uintptr)(unsafe.Pointer(&X))
-	y := (uintptr)(unsafe.Pointer(&Y))
-	z := (uintptr)(unsafe.Pointer(&Z))
+	cX := C.float(X)
+	cY := C.float(Y)
+	cZ := C.float(Z)
 
-	// cX := C.float(X)
-	// cY := C.float(Y)
-	// cZ := C.float(Z)
-
-	// x := (uintptr)(unsafe.Pointer(&cX))
-	// y := (uintptr)(unsafe.Pointer(&cY))
-	// z := (uintptr)(unsafe.Pointer(&cZ))
-
-	altVector3Ptr, _, _ := lib.vector3Create.Call(x, y, z)
-
-	fmt.Println("vector: ", altVector3Ptr)
+	altVector3Ptr, _, _ := lib.vector3Create.Call()
+	C.alt_Vector_float_3_PointLayout_Set(C.uintptr_t(altVector3Ptr), cX, cY, cZ)
 
 	return &Vector3{
 		lib: lib,

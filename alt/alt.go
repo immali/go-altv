@@ -21,7 +21,8 @@ type AltLib struct {
 	eventGetType                *syscall.Proc
 	eventGetPlayerConnectTarget *syscall.Proc
 
-	vector3Create *syscall.Proc
+	vector3CreateXYZ *syscall.Proc
+	vector3Create    *syscall.Proc
 
 	playerGetRefFromEvent *syscall.Proc
 	playerGetFromRef      *syscall.Proc
@@ -74,7 +75,8 @@ func NewAltLib(libPath string) *AltLib {
 		eventGetType:                lib.MustFindProc("alt_CEvent_GetType"),
 		eventGetPlayerConnectTarget: lib.MustFindProc("alt_CPlayerConnectEvent_GetTarget"),
 
-		vector3Create: lib.MustFindProc("alt_Vector_float_3_PointLayout_Create_1"),
+		vector3CreateXYZ: lib.MustFindProc("alt_Vector_float_3_PointLayout_Create_1"),
+		vector3Create:    lib.MustFindProc("alt_Vector_float_3_PointLayout_Create"),
 
 		playerGetID:           lib.MustFindProc("alt_IPlayer_GetID"),
 		playerGetRefFromEvent: lib.MustFindProc("alt_CPlayerConnectEvent_GetTarget"),
