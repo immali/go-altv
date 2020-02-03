@@ -17,8 +17,6 @@ func (sr *ScriptRuntime) createImpl(altScriptRuntime, altResource uintptr) uintp
 	impl := NewResourceImpl(sr.lib, altResource, id, sr.onNotifyEvent)
 	sr.impl = append(sr.impl, impl)
 
-	// sr.fn(res)
-
 	return impl.ptr
 }
 
@@ -31,12 +29,8 @@ func (sr *ScriptRuntime) onTick() uintptr {
 }
 
 func (sr *ScriptRuntime) Register(moduleType string) bool {
-	// cModuleType := "go"
-	// cModuleTypePtr := (uintptr)(unsafe.Pointer(&cModuleType))
-
 	typeStringView := NewStringViewFromString(sr.lib, moduleType)
 	res, _, _ := sr.lib.scriptRuntimeRegister.Call(sr.lib.core, typeStringView.ptr, sr.ptr)
-	// res, _, _ := sr.lib.scriptRuntimeRegister.Call(sr.lib.core, cModuleTypePtr, sr.ptr)
 
 	if int(res) == 1 {
 		return true

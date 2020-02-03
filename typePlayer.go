@@ -1,12 +1,8 @@
 package goaltv
 
-import (
-	"github.com/cenkalti/rpc2"
-)
-
 // Player - Resource.Player Object
 type Player struct {
-	rpc  *rpc2.Client
+	rpc  *rpcClient
 	ID   int
 	Name string
 	// Pos Vector3
@@ -14,28 +10,29 @@ type Player struct {
 
 // Spawn - spawns player at given location
 func (p *Player) Spawn(pos Vector3) bool {
-	var reply RPCReply
-	args := RPCSpawnPlayerEventArgs{
-		ID:  p.ID,
-		Pos: pos,
+	args := HandleArgs{
+		"ID": p.ID,
+		"X":  pos.X,
+		"Y":  pos.Y,
+		"Z":  pos.Z,
 	}
 
-	p.rpc.Call(RPCSpawnPlayerEvent, &args, &reply)
-
-	return bool(reply)
+	return p.rpc.serverHandleEvent(RPCServerSpawnPlayer, args)
 }
 
 func (p *Player) SetModel(model uint) {
-	var reply RPCReply
-	args := RPCPlayerSetModelEventArgs{ID: p.ID, Model: model}
+	args := HandleArgs{
+		"ID":    p.ID,
+		"Model": model,
+	}
 
-	p.rpc.Call(RPCPlayerSetModelEvent, &args, &reply)
+	p.rpc.serverHandleEvent(RPCServerPlayerSetModel, args)
 }
 
-func NewPlayerFromConnectArgs(rpc *rpc2.Client, args *RPCOnPlayerConnectEventArgs) *Player {
+func NewPlayerFromConnectArgs(rpc *rpcClient, args HandleArgs) *Player {
 	return &Player{
 		rpc:  rpc,
-		ID:   args.ID,
-		Name: args.Name,
+		ID:   args["ID"].(int),
+		Name: args["Name"].(string),
 	}
 }

@@ -8,68 +8,113 @@ import (
 	"github.com/immali/go-altv/alt"
 )
 
-var players map[int]*alt.Player = make(map[int]*alt.Player)
-var onPlayerConnect map[int]*rpc2.Client = make(map[int]*rpc2.Client)
-
 type rpcServer struct {
-	rpc *rpc2.Server
+	r *rpc2.Server
 }
 
-func (s *rpcServer) emitPlayerConnect(resID int, p *alt.Player) bool {
-	client, listening := onPlayerConnect[resID]
+var listeners = make(map[int]map[string]*rpc2.Client)
+var players = make(map[int]*alt.Player)
 
-	if !listening {
-		return false
-	}
-
+func (rs *rpcServer) onEvent(id int, altEvent *alt.Event) {
+	var args RPCHandleEventArgs
 	var reply RPCReply
-	args := RPCOnPlayerConnectEventArgs{
-		ID:   p.GetID(),
-		Name: p.GetName(),
+	event := AltEventToRPCEvent(altEvent.GetType())
+
+	fmt.Println("AltEvent: ", event)
+
+	if _, exists := listeners[id]; !exists {
+		return
 	}
 
-	client.Call(RPCOnPlayerConnectEvent, &args, &reply)
+	if _, exists := listeners[id][event]; !exists {
+		return
+	}
 
-	return bool(reply)
-}
+	fmt.Println(fmt.Sprintf("Handle AltEvent %s for Resource %d", event, id))
 
-func (s *rpcServer) onEvent(id int, event *alt.Event) {
-	switch AltEventIDToRPCEvent(event.GetType()) {
-	case RPCOnPlayerConnectEvent:
+	switch event {
+	case RPCClientPlayerConnectedEvent:
 		{
-			p := event.GetPlayerConnectTarget()
-			if _, exists := players[p.GetID()]; !exists {
-				players[p.GetID()] = p
+			p := altEvent.GetPlayerConnectTarget()
+			playerID := p.GetID()
+			args = RPCHandleEventArgs{
+				Event: RPCClientPlayerConnectedEvent,
+				ID:    id,
+				Args: HandleArgs{
+					"ID":   playerID,
+					"Name": p.GetName(),
+				},
 			}
 
-			s.emitPlayerConnect(id, event.GetPlayerConnectTarget())
+			if _, exists := players[playerID]; !exists {
+				players[playerID] = p
+			}
 			break
 		}
+	case RPCClientResourceStartEvent:
+		{
+			args = RPCHandleEventArgs{
+				Event: RPCClientResourceStartEvent,
+				ID:    id,
+				Args:  HandleArgs{},
+			}
+			break
+		}
+	default:
+		{
+			return
+		}
+	}
+
+	fmt.Println("Calling resource")
+	client, _ := listeners[id][event]
+	err := client.Call(RPCHandleEvent, args, &reply)
+
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
-func (s *rpcServer) listen() {
-	lis, _ := net.Listen("tcp", "127.0.0.1:5000")
-	go s.rpc.Accept(lis)
-}
+func (rs *rpcServer) attachHandlers() {
+	rpc := rs.r
 
-func newRPCServer() *rpcServer {
-	s := &rpcServer{
-		rpc: rpc2.NewServer(),
-	}
-
-	s.rpc.Handle(RPCRegisterEvent, func(client *rpc2.Client, args *RPCRegisterEventArgs, reply *RPCReply) error {
-		fmt.Println(fmt.Sprintf("Registering event %s for Resource %d", args.Event, args.ID))
-
-		if args.Event == RPCNoneEvent {
-			*reply = RPCReply(true)
-			return nil
+	rpc.Handle(RPCServerRegisterEvent, func(c *rpc2.Client, args *RPCServerRegisterEventArgs, reply *RPCReply) error {
+		if _, exists := listeners[args.ID]; !exists {
+			listeners[args.ID] = make(map[string]*rpc2.Client)
 		}
 
+		if _, exists := listeners[args.ID][args.Event]; !exists {
+			listeners[args.ID][args.Event] = c
+		}
+
+		*reply = RPCReply(true)
+		return nil
+	})
+
+	rpc.Handle(RPCHandleEvent, func(c *rpc2.Client, args *RPCHandleEventArgs, reply *RPCReply) error {
 		switch args.Event {
-		case RPCOnPlayerConnectEvent:
+		case RPCServerSpawnPlayer:
 			{
-				onPlayerConnect[args.ID] = client
+				id := args.Args["ID"].(int)
+				pos := Vector3{
+					X: args.Args["X"].(float64),
+					Y: args.Args["Y"].(float64),
+					Z: args.Args["Z"].(float64),
+				}
+
+				if player, exists := players[id]; exists {
+					player.Spawn(pos.X, pos.Y, pos.Z, 0)
+				}
+				break
+			}
+		case RPCServerPlayerSetModel:
+			{
+				id := args.Args["ID"].(int)
+				model := args.Args["Model"].(uint)
+
+				if player, exists := players[id]; exists {
+					player.SetModel(model)
+				}
 				break
 			}
 		}
@@ -77,24 +122,18 @@ func newRPCServer() *rpcServer {
 		*reply = RPCReply(true)
 		return nil
 	})
+}
 
-	s.rpc.Handle(RPCSpawnPlayerEvent, func(client *rpc2.Client, args *RPCSpawnPlayerEventArgs, reply *RPCReply) error {
-		if p, exists := players[args.ID]; exists {
-			p.Spawn(args.Pos.X, args.Pos.Y, args.Pos.Z, 10)
-		}
+func (rs *rpcServer) listen() {
+	lis, _ := net.Listen("tcp", "127.0.0.1:5000")
+	go rs.r.Accept(lis)
 
-		*reply = RPCReply(true)
-		return nil
-	})
+}
 
-	s.rpc.Handle(RPCPlayerSetModelEvent, func(_ *rpc2.Client, args *RPCPlayerSetModelEventArgs, reply *RPCReply) error {
-		if p, exists := players[args.ID]; exists {
-			p.SetModel(args.Model)
-		}
+func newRPCServer() *rpcServer {
+	r := rpc2.NewServer()
+	rs := &rpcServer{r}
+	rs.attachHandlers()
 
-		*reply = RPCReply(true)
-		return nil
-	})
-
-	return s
+	return rs
 }

@@ -9,8 +9,12 @@ type Resource struct {
 	rpc *rpcClient
 }
 
-func (r *Resource) OnPlayerConnect(handler func(p *Player)) {
-	r.rpc.addOnPlayerConnectHandler(handler)
+func (r *Resource) OnResourceStart(fn func()) {
+	r.rpc.registerEvent(RPCClientResourceStartEvent, fn)
+}
+
+func (r *Resource) OnPlayerConnect(fn func(p *Player)) {
+	r.rpc.registerEvent(RPCClientPlayerConnectedEvent, fn)
 }
 
 func NewResource() *Resource {
